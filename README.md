@@ -1,4 +1,4 @@
-# Encoding Helper
+# SQL Helper
 
 It is a small tool to connect database and execute SQL.
 
