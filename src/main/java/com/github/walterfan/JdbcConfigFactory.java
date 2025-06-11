@@ -3,45 +3,41 @@ package com.github.walterfan;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.HierarchicalStreamDriver;
 import com.thoughtworks.xstream.io.xml.DomDriver;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.io.IOUtils;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
 
 public class JdbcConfigFactory {
-  private static String configFilename = "JDBCConfig.xml";
+  private static String configFilename = "jdbc_config.yaml";
   
-  private List<JdbcConfig> configList = new ArrayList<>(5);
+  private List<JdbcConfig> configs = new ArrayList<>(5);
   
   public void add(JdbcConfig jc) {
-    this.configList.add(jc);
+    this.configs.add(jc);
   }
   
   public JdbcConfig get(String name) {
-    for (JdbcConfig cfg : this.configList) {
+    for (JdbcConfig cfg : this.configs) {
       if (cfg.getName().equals(name))
         return cfg; 
     } 
     return null;
   }
-  
-  public static String getConfigFilename() {
-    return configFilename;
-  }
-  
+
   public static void setConfigFilename(String configFilename) {
     JdbcConfigFactory.configFilename = configFilename;
   }
   
-  public List<JdbcConfig> getConfigList() {
-    return this.configList;
+  public List<JdbcConfig> getConfigs() {
+    return this.configs;
   }
   
-  public void setConfigList(List<JdbcConfig> configList) {
-    this.configList = configList;
+  public void setConfigs(List<JdbcConfig> configs) {
+    this.configs = configs;
   }
   
   public void serialize(OutputStream os) throws IOException {
@@ -59,17 +55,31 @@ public class JdbcConfigFactory {
       IOUtils.closeQuietly(fos);
     } 
   }
-  
-  public static JdbcConfigFactory deserialize(String xml) throws IOException {
-    XStream xstream = createXStream();
+
+
+
+  public static JdbcConfigFactory deserialize(String yamlFile) throws IOException {
     InputStream fis = null;
     try {
-      fis = JdbcConfigFactory.class.getClassLoader().getResourceAsStream(xml);
-      return (JdbcConfigFactory)xstream.fromXML(fis);
+      fis = JdbcConfigFactory.class.getClassLoader().getResourceAsStream(yamlFile);
+      if (fis == null) {
+        fis = new FileInputStream("./etc/" + yamlFile);
+      }
+
+      Yaml yaml = new Yaml(new Constructor(JdbcConfigFactory.class));
+      JdbcConfigFactory factory = yaml.load(fis);
+
+      for (JdbcConfig config : factory.getConfigs()) {
+        config.resolveEnvironmentVariables();
+      }
+
+      return factory;
     } finally {
       IOUtils.closeQuietly(fis);
-    } 
+    }
   }
+
+
   
   public static JdbcConfigFactory deserialize() throws IOException {
     return deserialize(configFilename);
@@ -92,7 +102,7 @@ public class JdbcConfigFactory {
   
   public String toString() {
     StringBuilder sb = new StringBuilder("");
-    for (JdbcConfig cfg : this.configList)
+    for (JdbcConfig cfg : this.configs)
       sb.append(cfg + "\n"); 
     return sb.toString();
   }

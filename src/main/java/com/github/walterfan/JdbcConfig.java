@@ -46,6 +46,8 @@ public class JdbcConfig extends DbConfig {
     } 
     return true;
   }
+
+
   
   public String toString() {
     return super.toString() + ", name = " + this.name + ", type=" + this.type;

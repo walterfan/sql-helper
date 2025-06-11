@@ -74,10 +74,14 @@ import com.github.walterfan.util.ConfigLoader;
 import com.github.walterfan.util.MyFilter;
 import com.github.walterfan.util.StringUtil;
 import com.github.walterfan.util.TextTransfer;
+import io.github.cdimascio.dotenv.Dotenv;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class SqlHelper extends SwingTool {
   private static final long serialVersionUID = -5757194742469820513L;
-  
+  private static Log logger = LogFactory.getLog(SqlHelper.class);
+
   private static final String NAME_VER = "SQL Tool v1.0";
   
   private static final Color DEFAULT_COLOR = new Color(153, 255, 204);
@@ -187,7 +191,7 @@ public class SqlHelper extends SwingTool {
           JMenuItem tplItem = new JMenuItem(SqlHelper.this.curSqlTplName);
           SqlHelper.this.fileMenu.add(tplItem);
         } catch (Exception e1) {
-          e1.printStackTrace();
+          logger.error("actionPerformed error", e1);
           SwingUtils.alert(e1.getMessage());
         } 
       } 
@@ -203,7 +207,7 @@ public class SqlHelper extends SwingTool {
         try {
           ClassPathHacker.addFile(new File(classpath));
         } catch (IOException e2) {
-          e2.printStackTrace();
+          logger.error("actionPerformed error", e2);
         }  
       JFileChooser c = null;
       String filename = SqlHelper.this.cfgLoader.getProperty("iBatisSqlTemplate");
@@ -233,7 +237,7 @@ public class SqlHelper extends SwingTool {
           JMenuItem tplItem = new JMenuItem(SqlHelper.this.curSqlTplName);
           SqlHelper.this.fileMenu.add(tplItem);
         } catch (Exception e1) {
-          e1.printStackTrace();
+          logger.error("actionPerformed error", e1);
           SwingUtils.alert(e1.getMessage());
         } 
       } 
@@ -250,7 +254,7 @@ public class SqlHelper extends SwingTool {
         SqlHelper.this.sqlMenu.repaint();
         SwingUtils.prompt("Reload SQL", "reloaded " + filename);
       } catch (Exception e1) {
-        e1.printStackTrace();
+        logger.error("actionPerformed error", e1);
         SwingUtils.alert(e1.getMessage());
       } 
     }
@@ -276,7 +280,7 @@ public class SqlHelper extends SwingTool {
           } 
           SwingUtils.prompt("Load SQL", "loaded " + aList.size() + " SQL.");
         } catch (IOException e1) {
-          e1.printStackTrace();
+          logger.error("actionPerformed error", e1);
           SwingUtils.alert(e1.getMessage());
         } 
       } 
@@ -296,7 +300,7 @@ public class SqlHelper extends SwingTool {
         try {
           ClassPathHacker.addFile(file);
         } catch (IOException e1) {
-          e1.printStackTrace();
+          logger.error("actionPerformed error", e1);
           SwingUtils.alert(e1.getMessage());
         } 
       } 
@@ -328,10 +332,10 @@ public class SqlHelper extends SwingTool {
           } 
           SwingUtils.prompt("Saved CSV", "saved " + filename);
         } catch (FileNotFoundException e1) {
-          e1.printStackTrace();
+          logger.error("file not found error", e1);
           SwingUtils.alert(e1.getMessage());
         } catch (IOException e2) {
-          e2.printStackTrace();
+          logger.error("file read error", e2);
           SwingUtils.alert(e2.getMessage());
         } finally {
           IOUtils.closeQuietly(fs);
@@ -358,7 +362,7 @@ public class SqlHelper extends SwingTool {
           SqlHelper.this.saveTableModelAsSql(bs, model);
         } 
       } catch (IOException e2) {
-        e2.printStackTrace();
+        logger.error("actionPerformed error", e2);
         SwingUtils.alert(e2.getMessage());
       } 
       SwingUtils.prompt("Copied to Clipboard", "Copied to Clipboard");
@@ -391,10 +395,10 @@ public class SqlHelper extends SwingTool {
           } 
           SwingUtils.prompt("Saved SQL", "saved " + filename);
         } catch (FileNotFoundException e1) {
-          e1.printStackTrace();
+          logger.error("file not found error", e1);
           SwingUtils.alert(e1.getMessage());
         } catch (IOException e2) {
-          e2.printStackTrace();
+          logger.error("file read error", e2);
           SwingUtils.alert(e2.getMessage());
         } finally {
           IOUtils.closeQuietly(fs);
@@ -558,21 +562,14 @@ public class SqlHelper extends SwingTool {
   
   JTextArea msgline = new JTextArea();
   
-  public SqlHelper() {
-    this("SQL Tool v1.0");
-  }
-  
-  public SqlHelper(String title) {
-    this(title, new ResultSetTableModelFactory());
-  }
-  
-  public SqlHelper(String title, ResultSetTableModelFactory factory) {
+
+  public SqlHelper(String title, String propertyFile) {
     super(title);
-    this.modelFactory = factory;
+    this.modelFactory = new ResultSetTableModelFactory();
     setDefaultCloseOperation(3);
     setFocusable(true);
     addKeyListener(new MyKeyListener());
-    loadConfig();
+    loadConfig(propertyFile);
     createDbList();
     createResultTypeList();
     Container contentPane = getContentPane();
@@ -612,15 +609,15 @@ public class SqlHelper extends SwingTool {
     this.resultTypeList = new JComboBox<>(vec);
   }
   
-  private void loadConfig() {
+  private void loadConfig(String propertyFile) {
     try {
-      this.cfgLoader.loadFromClassPath("db_querier.properties", getClass().getClassLoader());
+      this.cfgLoader.loadFromClassPath(propertyFile, getClass().getClassLoader());
       this.defaultSql = this.cfgLoader.getProperty("defaultSql", this.defaultSql);
       this.defaultIdx = NumberUtils.toInt(this.cfgLoader.getProperty("defaultIndex"));
       this.curSqlTplName = this.cfgLoader.getProperty("defaultSqlTemplate", this.curSqlTplName);
       this.jdbcFactory = JdbcConfigFactory.deserialize();
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("load config error", e);
       this.jdbcFactory = JdbcConfigFactory.createJdbcConfigFactory();
     }
   }
@@ -641,7 +638,7 @@ public class SqlHelper extends SwingTool {
   }
   
   private void createDbList() {
-    List<JdbcConfig> list = this.jdbcFactory.getConfigList();
+    List<JdbcConfig> list = this.jdbcFactory.getConfigs();
     Vector<String> vec = new Vector<>(list.size());
     for (int i = 0; i < list.size(); i++) {
       JdbcConfig cfg = list.get(i);
@@ -915,7 +912,7 @@ public class SqlHelper extends SwingTool {
     try {
       checkDbConfig();
     } catch (ClassNotFoundException e) {
-      SwingUtils.alert(e.getMessage());
+      SwingUtils.alert("not found class" + e.getMessage() + ", please retry");
       return;
     } 
     EventQueue.invokeLater(new Runnable() {
@@ -951,8 +948,9 @@ public class SqlHelper extends SwingTool {
     try {
       checkDbConfig();
     } catch (ClassNotFoundException e) {
-      SwingUtils.alert(e.getMessage());
-      return;
+      logger.warn("cannot found class: " +  e.getMessage());
+      //SwingUtils.alert("drive class: " + e.getMessage() + ", please retry");
+      // return;
     } 
     this.msgline.setText("Execute " + sql);
     executeAndDisplayResults(sql);
@@ -979,14 +977,23 @@ public class SqlHelper extends SwingTool {
   }
   
   public static void main(String[] args) throws Exception {
-    ResultSetTableModelFactory factory = null;
-    if (args.length == 0) {
-      factory = new ResultSetTableModelFactory();
-    } else {
-      factory = new ResultSetTableModelFactory(args[0], args[1], args[2], args[3]);
-    } 
+
+    String propertiesPath = "sql_helper.properties"; // 默认路径
+
+    if (args.length > 0) {
+      propertiesPath = args[0];
+    }
+
+    Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+
+    dotenv.entries().forEach(entry -> {
+      System.setProperty(entry.getKey(), entry.getValue());
+      //logger.debug("Loaded env var: " + entry.getKey() + "=" + entry.getValue());
+    });
+
+
     SwingUtils.setFont(new Font("Dialog", 0, 13));
-    SqlHelper qf = new SqlHelper("SQL Tool v1.0", factory);
+    SqlHelper qf = new SqlHelper("SQL Tool v1.0", propertiesPath);
     SwingUtils.run((JFrame)qf, 900, 700);
   }
 }

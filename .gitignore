@@ -1,5 +1,9 @@
 # Compiled class file
 *.class
+.env
+private_config.properties
+private_config.xml
+walter.sh
 
 # Log file
 *.log

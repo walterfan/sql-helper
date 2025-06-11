@@ -1114,4 +1114,41 @@ public abstract class StringUtil {
                 System.out.println(dateString + "/" + date.toString());
 
         }
+
+        public static String replacePlaceholders(String input) {
+                if (input == null || !input.contains("${")) {
+                        return input;
+                }
+
+                StringBuilder result = new StringBuilder();
+                int startIndex = 0;
+
+                while (true) {
+                        int startIdx = input.indexOf("${", startIndex);
+                        if (startIdx == -1) {
+                                result.append(input.substring(startIndex));
+                                break;
+                        }
+
+                        int endIdx = input.indexOf("}", startIdx + 2);
+                        if (endIdx == -1) {
+                                throw new IllegalArgumentException("Unclosed placeholder in string: " + input);
+                        }
+
+                        String before = input.substring(startIndex, startIdx);
+                        String varName = input.substring(startIdx + 2, endIdx);
+
+                        String envValue = System.getProperty(varName);
+                        if (envValue == null) {
+                                throw new IllegalStateException("Environment variable not found: " + varName);
+                        }
+
+                        result.append(before).append(envValue);
+                        startIndex = endIdx + 1;
+                }
+
+                return result.toString();
+        }
+
+
 }

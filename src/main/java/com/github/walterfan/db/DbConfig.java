@@ -1,5 +1,7 @@
 package com.github.walterfan.db;
 
+import com.github.walterfan.util.StringUtil;
+
 public class DbConfig {
   private String driverClass = null;
   
@@ -104,4 +106,11 @@ public class DbConfig {
     } 
     return true;
   }
+
+  public void resolveEnvironmentVariables() {
+    this.url = StringUtil.replacePlaceholders(this.url);
+    this.userName = StringUtil.replacePlaceholders(this.userName);
+    this.password = StringUtil.replacePlaceholders(this.password);
+  }
+
 }
